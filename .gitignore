@@ -1,3 +1,7 @@
 /build
 /save
 contacts.txt
+
+*.pro.user
+build/
+phonebook.pro.user
