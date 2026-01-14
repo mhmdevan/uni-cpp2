@@ -1,133 +1,167 @@
 #include "file_contact_repository.hpp"
 
-#include <fstream>
-#include <sstream>
+#include <QFile>
+#include <QTextStream>
+
+#include "phone_number.hpp"
 
 namespace
 {
-    std::string escapeField(const std::string &value)
+    QString escapeField(const QString &value)
     {
-        std::string result;
-        for (char ch : value)
+        QString out;
+        out.reserve(value.size());
+        for (const QChar ch : value)
         {
             if (ch == '|' || ch == ',' || ch == '\\' || ch == '\n')
-            {
-                result.push_back('\\');
-            }
-            result.push_back(ch);
+                out.append('\\');
+            out.append(ch);
         }
-        return result;
+        return out;
     }
 
-    std::string unescapeField(const std::string &value)
+    QString unescapeField(const QString &value)
     {
-        std::string result;
-        bool escape = false;
-        for (char ch : value)
+        QString out;
+        out.reserve(value.size());
+        bool esc = false;
+        for (const QChar ch : value)
         {
-            if (!escape && ch == '\\')
+            if (!esc && ch == '\\')
             {
-                escape = true;
-            }
-            else
-            {
-                result.push_back(ch);
-                escape = false;
-            }
-        }
-        return result;
-    }
-
-    std::vector<std::string> split(const std::string &line, char delimiter)
-    {
-        std::vector<std::string> parts;
-        std::string current;
-        bool escape = false;
-        for (char ch : line)
-        {
-            if (!escape && ch == '\\')
-            {
-                escape = true;
+                esc = true;
                 continue;
             }
-            if (!escape && ch == delimiter)
-            {
-                parts.push_back(current);
-                current.clear();
-            }
-            else
-            {
-                if (escape)
-                {
-                    current.push_back('\\');
-                    escape = false;
-                }
-                current.push_back(ch);
-            }
+            out.append(ch);
+            esc = false;
         }
-        parts.push_back(current);
+        return out;
+    }
+
+    std::vector<QString> splitEscaped(const QString &line, QChar delimiter)
+    {
+        std::vector<QString> parts;
+        QString cur;
+        bool esc = false;
+
+        for (const QChar ch : line)
+        {
+            if (!esc && ch == '\\')
+            {
+                esc = true;
+                continue;
+            }
+
+            if (!esc && ch == delimiter)
+            {
+                parts.push_back(cur);
+                cur.clear();
+                continue;
+            }
+
+            cur.append(ch);
+            esc = false;
+        }
+
+        parts.push_back(cur);
         return parts;
     }
 
-    std::string serializeContact(const Contact &contact)
+    QString serializePhones(const std::vector<PhoneNumber> &phones)
     {
-        std::ostringstream output;
-        output << escapeField(contact.firstName()) << '|';
-        output << escapeField(contact.lastName()) << '|';
-        output << escapeField(contact.middleName()) << '|';
-        output << escapeField(contact.address()) << '|';
-        output << escapeField(contact.birthDate()) << '|';
-        output << escapeField(contact.email()) << '|';
-        const auto &phones = contact.phoneNumbers();
+        QString out;
         for (std::size_t i = 0; i < phones.size(); ++i)
         {
-            const auto &phone = phones[i];
-            output << PhoneNumber::typeToString(phone.type()) << ':' << escapeField(phone.value());
+            const auto &p = phones[i];
+            out += PhoneNumber::typeToString(p.type());
+            out += ':';
+            out += escapeField(p.value());
             if (i + 1 < phones.size())
-            {
-                output << ',';
-            }
+                out += ',';
         }
-        return output.str();
+        return out;
     }
 
-    Contact deserializeContact(const std::string &line)
+    std::vector<PhoneNumber> deserializePhones(const QString &value)
     {
-        auto fields = split(line, '|');
-        Contact contact;
-        if (fields.size() < 7)
-        {
-            return contact;
-        }
-        contact.setFirstName(unescapeField(fields[0]));
-        contact.setLastName(unescapeField(fields[1]));
-        contact.setMiddleName(unescapeField(fields[2]));
-        contact.setAddress(unescapeField(fields[3]));
-        contact.setBirthDate(unescapeField(fields[4]));
-        contact.setEmail(unescapeField(fields[5]));
         std::vector<PhoneNumber> phones;
-        auto phoneParts = split(fields[6], ',');
-        for (const auto &part : phoneParts)
+        const auto items = splitEscaped(value, ',');
+
+        for (const auto &item : items)
         {
-            if (part.empty())
-            {
+            if (item.isEmpty())
                 continue;
-            }
-            auto typeAndValue = split(part, ':');
-            if (typeAndValue.size() != 2)
-            {
+
+            const auto pair = splitEscaped(item, ':');
+            if (pair.size() != 2)
                 continue;
-            }
-            PhoneType type = PhoneNumber::stringToType(typeAndValue[0]);
-            std::string value = unescapeField(typeAndValue[1]);
-            phones.emplace_back(type, value);
+
+            const PhoneType type = PhoneNumber::stringToType(pair[0]);
+            const QString number = unescapeField(pair[1]);
+            phones.emplace_back(type, number);
         }
-        contact.setPhoneNumbers(phones);
-        return contact;
+
+        return phones;
+    }
+
+    QString dateToString(const QDate &date)
+    {
+        if (!date.isValid())
+            return QString();
+        return date.toString("dd.MM.yyyy");
+    }
+
+    QDate dateFromString(const QString &value)
+    {
+        const QString s = value.trimmed();
+        if (s.isEmpty())
+            return QDate();
+        return QDate::fromString(s, "dd.MM.yyyy");
+    }
+
+    QString serializeContact(const Contact &c)
+    {
+        QString out;
+        out += escapeField(c.firstName());
+        out += '|';
+        out += escapeField(c.lastName());
+        out += '|';
+        out += escapeField(c.middleName());
+        out += '|';
+        out += escapeField(c.address());
+        out += '|';
+        out += escapeField(dateToString(c.birthDate()));
+        out += '|';
+        out += escapeField(c.email());
+        out += '|';
+        out += serializePhones(c.phoneNumbers());
+        return out;
+    }
+
+    bool deserializeContact(const QString &line, Contact &outContact)
+    {
+        const auto fields = splitEscaped(line, '|');
+        if (fields.size() < 7)
+            return false;
+
+        Contact c;
+        c.setFirstName(unescapeField(fields[0]).trimmed());
+        c.setLastName(unescapeField(fields[1]).trimmed());
+        c.setMiddleName(unescapeField(fields[2]).trimmed());
+        c.setAddress(unescapeField(fields[3]).trimmed());
+        c.setBirthDate(dateFromString(unescapeField(fields[4])));
+        c.setEmail(unescapeField(fields[5]).trimmed());
+        c.setPhoneNumbers(deserializePhones(fields[6]));
+
+        if (c.firstName().isEmpty() || c.lastName().isEmpty() || c.email().isEmpty() || c.phoneNumbers().empty())
+            return false;
+
+        outContact = std::move(c);
+        return true;
     }
 }
 
-FileContactRepository::FileContactRepository(std::string filePath)
+FileContactRepository::FileContactRepository(QString filePath)
     : filePath_(std::move(filePath))
 {
 }
@@ -135,32 +169,48 @@ FileContactRepository::FileContactRepository(std::string filePath)
 std::vector<Contact> FileContactRepository::loadAll()
 {
     std::vector<Contact> contacts;
-    std::ifstream input(filePath_);
-    if (!input.is_open())
-    {
+
+    QFile file(filePath_);
+    if (!file.exists())
         return contacts;
-    }
-    std::string line;
-    while (std::getline(input, line))
+
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return contacts;
+
+    QTextStream in(&file);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    in.setEncoding(QStringConverter::Utf8);
+#else
+    in.setCodec("UTF-8");
+#endif
+
+    while (!in.atEnd())
     {
-        if (line.empty())
-        {
+        const QString line = in.readLine();
+        if (line.trimmed().isEmpty())
             continue;
-        }
-        Contact contact = deserializeContact(line);
-        if (!contact.firstName().empty() || !contact.lastName().empty())
-        {
-            contacts.push_back(contact);
-        }
+
+        Contact c;
+        if (deserializeContact(line, c))
+            contacts.push_back(std::move(c));
     }
+
     return contacts;
 }
 
 void FileContactRepository::saveAll(const std::vector<Contact> &contacts)
 {
-    std::ofstream output(filePath_, std::ios::trunc);
-    for (const auto &contact : contacts)
-    {
-        output << serializeContact(contact) << '\n';
-    }
+    QFile file(filePath_);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        return;
+
+    QTextStream out(&file);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    out.setEncoding(QStringConverter::Utf8);
+#else
+    out.setCodec("UTF-8");
+#endif
+
+    for (const auto &c : contacts)
+        out << serializeContact(c) << "\n";
 }

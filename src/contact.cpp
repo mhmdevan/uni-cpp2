@@ -1,31 +1,31 @@
 #include "contact.hpp"
 
-const std::string &Contact::firstName() const
+const QString &Contact::firstName() const
 {
     return firstName_;
 }
 
-const std::string &Contact::lastName() const
+const QString &Contact::lastName() const
 {
     return lastName_;
 }
 
-const std::string &Contact::middleName() const
+const QString &Contact::middleName() const
 {
     return middleName_;
 }
 
-const std::string &Contact::address() const
+const QString &Contact::address() const
 {
     return address_;
 }
 
-const std::string &Contact::birthDate() const
+const QDate &Contact::birthDate() const
 {
     return birthDate_;
 }
 
-const std::string &Contact::email() const
+const QString &Contact::email() const
 {
     return email_;
 }
@@ -35,37 +35,37 @@ const std::vector<PhoneNumber> &Contact::phoneNumbers() const
     return phoneNumbers_;
 }
 
-void Contact::setFirstName(const std::string &value)
+void Contact::setFirstName(QString value)
 {
-    firstName_ = value;
+    firstName_ = std::move(value);
 }
 
-void Contact::setLastName(const std::string &value)
+void Contact::setLastName(QString value)
 {
-    lastName_ = value;
+    lastName_ = std::move(value);
 }
 
-void Contact::setMiddleName(const std::string &value)
+void Contact::setMiddleName(QString value)
 {
-    middleName_ = value;
+    middleName_ = std::move(value);
 }
 
-void Contact::setAddress(const std::string &value)
+void Contact::setAddress(QString value)
 {
-    address_ = value;
+    address_ = std::move(value);
 }
 
-void Contact::setBirthDate(const std::string &value)
+void Contact::setBirthDate(QDate value)
 {
-    birthDate_ = value;
+    birthDate_ = std::move(value);
 }
 
-void Contact::setEmail(const std::string &value)
+void Contact::setEmail(QString value)
 {
-    email_ = value;
+    email_ = std::move(value);
 }
 
-void Contact::setPhoneNumbers(const std::vector<PhoneNumber> &values)
+void Contact::setPhoneNumbers(std::vector<PhoneNumber> values)
 {
-    phoneNumbers_ = values;
+    phoneNumbers_ = std::move(values);
 }

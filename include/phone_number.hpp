@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string>
+#include <QString>
 
 enum class PhoneType
 {
@@ -13,18 +13,21 @@ class PhoneNumber
 {
 public:
     PhoneNumber() = default;
-    PhoneNumber(PhoneType type, std::string value);
+    PhoneNumber(PhoneType type, QString value);
 
     PhoneType type() const;
-    const std::string &value() const;
+    const QString &value() const;
 
     void setType(PhoneType type);
-    void setValue(const std::string &value);
+    void setValue(QString value);
 
-    static std::string typeToString(PhoneType type);
-    static PhoneType stringToType(const std::string &value);
+    static QString typeToString(PhoneType type);
+    static PhoneType stringToType(const QString &value);
+
+    static QString typeToLabel(PhoneType type);
+    static PhoneType labelToType(const QString &label);
 
 private:
     PhoneType type_{PhoneType::Home};
-    std::string value_;
+    QString value_;
 };

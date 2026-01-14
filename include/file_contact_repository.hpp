@@ -1,17 +1,17 @@
 #pragma once
 
-#include <string>
+#include <QString>
 
 #include "contact_repository.hpp"
 
 class FileContactRepository : public ContactRepository
 {
 public:
-    explicit FileContactRepository(std::string filePath);
+    explicit FileContactRepository(QString filePath);
 
     std::vector<Contact> loadAll() override;
     void saveAll(const std::vector<Contact> &contacts) override;
 
 private:
-    std::string filePath_;
+    QString filePath_;
 };

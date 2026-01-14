@@ -1,11 +1,12 @@
 #pragma once
 
-#include <string>
+#include <QDate>
+#include <QString>
 
-bool isBlank(const std::string &value);
-std::string trim(const std::string &value);
+QString trim(const QString &value);
+QString normalizeEmail(const QString &value);
 
-bool isValidName(const std::string &value);
-bool isValidEmail(const std::string &value);
-bool isValidPhoneNumber(const std::string &value);
-bool isValidBirthDate(const std::string &value);
+bool isValidName(const QString &value);
+bool isValidEmail(const QString &value);
+bool isValidPhoneNumber(const QString &value);
+bool isValidBirthDate(const QDate &date);
