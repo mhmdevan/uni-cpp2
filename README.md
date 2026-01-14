@@ -42,8 +42,24 @@ arch -x86_64 open -n ./phonebook.app
 ./phonebook.app/Contents/MacOS/phonebook
 ```
 
+## Вместе
+
+```bash
+rm -rf build
+mkdir -p build
+cd build
+
+export PATH="$(brew --prefix qt)/bin:$PATH"
+
+qmake ../phonebook.pro
+make -j"$(sysctl -n hw.ncpu)"
+
+open -n ./phonebook.app
+
+./phonebook.app/Contents/MacOS/phonebook
+```
+
 ## Файл данных
 
 Данные сохраняются в `contacts.txt` рядом с приложением/в рабочей директории запуска.
 Формат — одна запись на строку, поля разделены `|`, телефоны — через `,`.
-
