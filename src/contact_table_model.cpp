@@ -1,42 +1,55 @@
 #include "contact_table_model.hpp"
 
-#include <QStringList>
+#include <QString>
 
 ContactTableModel::ContactTableModel(QObject *parent)
     : QAbstractTableModel(parent)
 {
 }
 
-void ContactTableModel::setContacts(std::vector<Contact> *contacts)
+void ContactTableModel::setContacts(const std::vector<Contact> &contacts)
 {
     beginResetModel();
     contacts_ = contacts;
     endResetModel();
 }
 
-int ContactTableModel::rowCount(const QModelIndex &) const
+const std::vector<Contact> &ContactTableModel::contacts() const
 {
-    if (!contacts_)
-        return 0;
-    return static_cast<int>(contacts_->size());
+    return contacts_;
 }
 
-int ContactTableModel::columnCount(const QModelIndex &) const
+int ContactTableModel::rowCount(const QModelIndex &parent) const
 {
-    return 7;
+    if (parent.isValid())
+        return 0;
+    return static_cast<int>(contacts_.size());
+}
+
+int ContactTableModel::columnCount(const QModelIndex &parent) const
+{
+    if (parent.isValid())
+        return 0;
+    return 6;
 }
 
 QVariant ContactTableModel::data(const QModelIndex &index, int role) const
 {
-    if (!contacts_ || !index.isValid())
-        return {};
+    if (!index.isValid())
+        return QVariant();
+
+    const int row = index.row();
+    const int col = index.column();
+
+    if (row < 0 || static_cast<std::size_t>(row) >= contacts_.size())
+        return QVariant();
 
     if (role != Qt::DisplayRole)
-        return {};
+        return QVariant();
 
-    const auto &c = contacts_->at(static_cast<std::size_t>(index.row()));
+    const Contact &c = contacts_[static_cast<std::size_t>(row)];
 
-    switch (index.column())
+    switch (col)
     {
     case 0:
         return c.lastName();
@@ -45,22 +58,20 @@ QVariant ContactTableModel::data(const QModelIndex &index, int role) const
     case 2:
         return c.middleName();
     case 3:
-        return c.birthDate().isValid() ? c.birthDate().toString("dd.MM.yyyy") : QString();
-    case 4:
         return c.email();
+    case 4:
+        return c.birthDate().isValid() ? c.birthDate().toString("dd.MM.yyyy") : QString();
     case 5:
-        return c.address();
-    case 6:
-        return phonesToString(c);
+        return phonePreview(c);
     default:
-        return {};
+        return QVariant();
     }
 }
 
 QVariant ContactTableModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
     if (role != Qt::DisplayRole)
-        return {};
+        return QVariant();
 
     if (orientation == Qt::Horizontal)
     {
@@ -73,75 +84,32 @@ QVariant ContactTableModel::headerData(int section, Qt::Orientation orientation,
         case 2:
             return "Отчество";
         case 3:
-            return "Дата рождения";
-        case 4:
             return "Email";
+        case 4:
+            return "Дата рождения";
         case 5:
-            return "Адрес";
-        case 6:
             return "Телефоны";
         default:
-            return {};
+            return QVariant();
         }
     }
 
     return section + 1;
 }
 
-Qt::ItemFlags ContactTableModel::flags(const QModelIndex &index) const
+QString ContactTableModel::phonePreview(const Contact &c)
 {
-    if (!index.isValid())
-        return Qt::NoItemFlags;
-    return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
-}
+    const auto &phones = c.phoneNumbers();
+    if (phones.empty())
+        return QString();
 
-void ContactTableModel::addContact(Contact contact)
-{
-    if (!contacts_)
-        return;
+    QStringList out;
+    out.reserve(static_cast<int>(phones.size()));
 
-    const int row = static_cast<int>(contacts_->size());
-    beginInsertRows(QModelIndex(), row, row);
-    contacts_->push_back(std::move(contact));
-    endInsertRows();
-}
-
-bool ContactTableModel::updateContact(int row, Contact contact)
-{
-    if (!contacts_ || row < 0 || row >= static_cast<int>(contacts_->size()))
-        return false;
-
-    (*contacts_)[static_cast<std::size_t>(row)] = std::move(contact);
-    const QModelIndex left = index(row, 0);
-    const QModelIndex right = index(row, columnCount() - 1);
-    emit dataChanged(left, right);
-    return true;
-}
-
-bool ContactTableModel::removeContact(int row)
-{
-    if (!contacts_ || row < 0 || row >= static_cast<int>(contacts_->size()))
-        return false;
-
-    beginRemoveRows(QModelIndex(), row, row);
-    contacts_->erase(contacts_->begin() + row);
-    endRemoveRows();
-    return true;
-}
-
-const Contact *ContactTableModel::contactAt(int row) const
-{
-    if (!contacts_ || row < 0 || row >= static_cast<int>(contacts_->size()))
-        return nullptr;
-    return &(*contacts_)[static_cast<std::size_t>(row)];
-}
-
-QString ContactTableModel::phonesToString(const Contact &c) const
-{
-    QStringList parts;
-    for (const auto &p : c.phoneNumbers())
+    for (const auto &p : phones)
     {
-        parts << (PhoneNumber::typeToLabel(p.type()) + ": " + p.value());
+        out.push_back(p.value());
     }
-    return parts.join(", ");
+
+    return out.join(", ");
 }

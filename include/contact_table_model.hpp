@@ -5,28 +5,23 @@
 
 #include "contact.hpp"
 
-class ContactTableModel : public QAbstractTableModel
+class ContactTableModel final : public QAbstractTableModel
 {
+    Q_OBJECT
 public:
     explicit ContactTableModel(QObject *parent = nullptr);
 
-    void setContacts(std::vector<Contact> *contacts);
+    void setContacts(const std::vector<Contact> &contacts);
+    const std::vector<Contact> &contacts() const;
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;
 
-    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
-    Qt::ItemFlags flags(const QModelIndex &index) const override;
-
-    void addContact(Contact contact);
-    bool updateContact(int row, Contact contact);
-    bool removeContact(int row);
-
-    const Contact *contactAt(int row) const;
+    QVariant data(const QModelIndex &index, int role) const override;
+    QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
 
 private:
-    std::vector<Contact> *contacts_{nullptr};
+    std::vector<Contact> contacts_;
 
-    QString phonesToString(const Contact &c) const;
+    static QString phonePreview(const Contact &c);
 };

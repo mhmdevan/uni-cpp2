@@ -1,34 +1,55 @@
-// src/main.cpp
 #include <QApplication>
-#include <QTimer>
-#include <QStandardPaths>
+#include <QCoreApplication>
 #include <QDir>
+#include <QFileInfo>
+#include <QtSql/QSqlDatabase>
 
+#include "db_config.hpp"
+#include "db_contact_repository.hpp"
+#include "dual_contact_repository.hpp"
 #include "file_contact_repository.hpp"
 #include "main_window.hpp"
 
-static QString contactsFilePath()
+static QString findProjectRoot()
 {
-    const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDir().mkpath(dir);
-    return dir + "/contacts.txt";
+    QDir dir(QDir::currentPath());
+    for (int i = 0; i < 10; ++i)
+    {
+        if (QFileInfo::exists(dir.filePath("CMakeLists.txt")) || QFileInfo::exists(dir.filePath(".git")))
+            return dir.absolutePath();
+        if (!dir.cdUp())
+            break;
+    }
+    return QDir::currentPath();
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
-    QApplication::setQuitOnLastWindowClosed(true);
 
-    FileContactRepository repo(contactsFilePath());
-    MainWindow w(repo);
+    const QString root = findProjectRoot();
+    QDir::setCurrent(root);
 
-    w.resize(1100, 650);
+    FileContactRepository fileRepo(QDir(root).filePath("contacts.txt"));
+
+    DbConfig cfg;
+    const bool cfgOk = cfg.isValid();
+
+    DbContactRepository dbRepo(cfg.host, cfg.port, cfg.name, cfg.user, cfg.password);
+    const bool dbOk = cfgOk && dbRepo.initialize();
+
+    DualContactRepository dualRepo(dbRepo, fileRepo);
+    ContactRepository *repo = dbOk ? static_cast<ContactRepository *>(&dualRepo)
+                                   : static_cast<ContactRepository *>(&fileRepo);
+
+    MainWindow w(*repo);
+
+    if (dbOk)
+        w.setDbStatus(true, "DB: online");
+    else
+        w.setDbStatus(false, cfgOk ? ("DB: offline " + dbRepo.lastError())
+                                   : "DB: offline (invalid config)");
+
     w.show();
-
-    QTimer::singleShot(0, [&w]()
-                       {
-        w.raise();
-        w.activateWindow(); });
-
     return app.exec();
 }
