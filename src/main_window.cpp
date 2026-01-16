@@ -4,6 +4,7 @@
 #include <QAbstractItemView>
 #include <QCloseEvent>
 #include <QHeaderView>
+#include <QKeySequence>
 #include <QLineEdit>
 #include <QMenu>
 #include <QMenuBar>
@@ -80,9 +81,15 @@ void MainWindow::buildUi()
 void MainWindow::buildMenu()
 {
     QMenu *storage = menuBar()->addMenu("Хранилище");
+
+    refreshAction_ = storage->addAction("Обновить");
+    refreshAction_->setShortcut(QKeySequence::Refresh);
+
     QAction *load = storage->addAction("Загрузить");
     QAction *save = storage->addAction("Сохранить");
 
+    connect(refreshAction_, &QAction::triggered, this, [this]
+            { refreshNow(); });
     connect(load, &QAction::triggered, this, [this]
             { loadFromStorage(); });
     connect(save, &QAction::triggered, this, [this]
@@ -98,6 +105,18 @@ void MainWindow::buildToolbar()
 {
     auto *tb = addToolBar("Действия");
     tb->setMovable(false);
+
+    if (!refreshAction_)
+    {
+        refreshAction_ = tb->addAction("Обновить");
+        refreshAction_->setShortcut(QKeySequence::Refresh);
+        connect(refreshAction_, &QAction::triggered, this, [this]
+                { refreshNow(); });
+    }
+    else
+    {
+        tb->addAction(refreshAction_);
+    }
 
     addAction_ = tb->addAction("Добавить");
     editAction_ = tb->addAction("Изменить");
@@ -124,13 +143,11 @@ void MainWindow::updateStatusLine(const QString &extra)
     const QString db = dbOnline_ ? "DB: online" : "DB: offline";
     const QString base = QString("Контактов: %1 | %2").arg(contacts_.size()).arg(db);
 
-    if (extra.trimmed().isEmpty())
-    {
+    const QString e = extra.trimmed();
+    if (e.isEmpty())
         statusBar()->showMessage(base);
-        return;
-    }
-
-    statusBar()->showMessage(base + " | " + extra.trimmed());
+    else
+        statusBar()->showMessage(base + " | " + e);
 }
 
 int MainWindow::selectedSourceRow() const
@@ -152,6 +169,12 @@ int MainWindow::selectedSourceRow() const
         return -1;
 
     return row;
+}
+
+void MainWindow::refreshNow()
+{
+    updateStatusLine("Обновляю...");
+    loadFromStorage();
 }
 
 void MainWindow::addContact()

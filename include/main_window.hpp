@@ -35,6 +35,7 @@ private:
     ContactTableModel *model_{nullptr};
     MultiFieldProxyModel *proxy_{nullptr};
 
+    QAction *refreshAction_{nullptr};
     QAction *addAction_{nullptr};
     QAction *editAction_{nullptr};
     QAction *removeAction_{nullptr};
@@ -50,6 +51,8 @@ private:
     void updateStatusLine(const QString &extra);
 
     int selectedSourceRow() const;
+
+    void refreshNow();
 
     void addContact();
     void editContact();
