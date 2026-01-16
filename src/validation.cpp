@@ -44,7 +44,8 @@ bool isValidEmail(const QString &value)
     if (s.isEmpty())
         return false;
 
-    static const QRegularExpression re("^[A-Za-z0-9]+@[A-Za-z0-9]+(\\.[A-Za-z0-9]+)*$");
+    static const QRegularExpression re(
+        R"(^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$)");
     return re.match(s).hasMatch();
 }
 
