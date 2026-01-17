@@ -124,13 +124,30 @@ bool DbContactRepository::open()
     lastError_.clear();
 
     QSqlDatabase database = db();
+
+    auto ping = [&]() -> bool
+    {
+        QSqlQuery q(database);
+        return q.exec("SELECT 1");
+    };
+
     if (database.isOpen())
-        return true;
+    {
+        if (ping())
+            return true;
+
+        database.close();
+    }
 
     if (database.open())
     {
-        qCInfo(logDb) << "DB connected:" << database.hostName() << database.port() << database.databaseName() << database.userName();
-        return true;
+        if (ping())
+        {
+            qCInfo(logDb) << "DB connected:" << database.hostName() << database.port() << database.databaseName() << database.userName();
+            return true;
+        }
+
+        database.close();
     }
 
     lastError_ = database.lastError().text();
